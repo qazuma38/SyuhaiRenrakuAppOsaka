@@ -1,0 +1,67 @@
+{
+  "name": "medic.web集配連絡システム",
+  "short_name": "medic.web",
+  "description": "医療配送システム専用アプリ",
+  "lang": "ja",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#ffffff",
+  "theme_color": "#4285f4",
+  "categories": ["medical", "business", "productivity"],
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "prefer_related_applications": false,
+  "shortcuts": [
+    {
+      "name": "連絡先一覧",
+      "short_name": "連絡先",
+      "description": "顧客・社員の連絡先一覧を表示",
+      "url": "/customers",
+      "icons": [
+        {
+          "src": "/favicon.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "チャット",
+      "short_name": "チャット", 
+      "description": "メッセージ一覧を表示",
+      "url": "/chat",
+      "icons": [
+        {
+          "src": "/favicon.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
+}
