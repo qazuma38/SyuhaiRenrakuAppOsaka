@@ -119,19 +119,19 @@ const CustomersPage: React.FC = () => {
             return null
           })()}
           
-          {/* 社員からの返信表示 */}
-          {item.latestMessageType === 'auto_response' && (
+          {/* 返信状態表示 */}
+          {item.latestMessageType && ['pickup_yes', 'pickup_no', 're_pickup'].includes(item.latestMessageType) && (
             <div style={{
               ...styles.messageTypeBadge,
-              backgroundColor: '#f3f4f6',
-              borderColor: '#6b7280'
+              backgroundColor: item.latestMessageType === 'auto_response' ? '#dcfce7' : '#fef2f2',
+              borderColor: item.latestMessageType === 'auto_response' ? '#10b981' : '#ef4444'
             }}>
-              <Building2 size={12} color="#6b7280" />
+              <Building2 size={12} color={item.latestMessageType === 'auto_response' ? '#10b981' : '#ef4444'} />
               <span style={{
                 ...styles.messageTypeText,
-                color: '#6b7280'
+                color: item.latestMessageType === 'auto_response' ? '#10b981' : '#ef4444'
               }}>
-                返信済み
+                {item.latestMessageType === 'auto_response' ? '返信済み' : '未返信'}
               </span>
             </div>
           )}
@@ -346,20 +346,21 @@ const styles = {
   badges: {
     display: 'flex',
     alignItems: 'center',
-    gap: '6px',
+    gap: '4px',
     flexWrap: 'wrap' as const,
+    justifyContent: 'flex-end',
   },
   messageTypeBadge: {
-    padding: '3px 6px',
+    padding: '2px 6px',
     borderRadius: '4px',
     border: '1px solid',
     display: 'flex',
     alignItems: 'center',
-    gap: '3px',
+    gap: '2px',
     minWidth: 'fit-content',
   },
   messageTypeText: {
-    fontSize: '10px',
+    fontSize: '9px',
     fontWeight: '600',
     whiteSpace: 'nowrap' as const,
   },
