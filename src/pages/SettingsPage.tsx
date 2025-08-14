@@ -1505,22 +1505,6 @@ const styles = {
     color: '#1f2937',
     margin: '0',
   },
-  loadingContainer: {
-    padding: '32px',
-    textAlign: 'center' as const,
-  },
-  loadingText: {
-    fontSize: '14px',
-    color: '#6b7280',
-  },
-  emptyContainer: {
-    padding: '32px',
-    textAlign: 'center' as const,
-  },
-  emptyText: {
-    fontSize: '14px',
-    color: '#6b7280',
-  },
 }
 
 export default SettingsPage
