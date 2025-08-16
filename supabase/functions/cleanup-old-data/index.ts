@@ -155,10 +155,24 @@ Deno.serve(async (req: Request) => {
             });
 
             if (!logResponse.ok) {
-              throw new Error(`Failed to save cleanup log: ${logResponse.statusText}`);
+              const errorText = await logResponse.text();
+              console.error('Failed to save cleanup log response:', errorText);
+              throw new Error(`Failed to save cleanup log: ${logResponse.status} ${logResponse.statusText}`);
             }
 
-            const logData = await logResponse.json();
+            let logData;
+            try {
+              const responseText = await logResponse.text();
+              if (responseText.trim()) {
+                logData = JSON.parse(responseText);
+              } else {
+                logData = [{ id: 'unknown' }];
+              }
+            } catch (parseError) {
+              console.error('Failed to parse log response:', parseError);
+              logData = [{ id: 'unknown' }];
+            }
+            
             stats.archiveFile = `Database record: ${logData[0]?.id || 'unknown'}`;
             console.log(`Saved CSV content to database for ${table}`);
           } catch (fileError) {
@@ -176,7 +190,9 @@ Deno.serve(async (req: Request) => {
           );
 
           if (!deleteResponse.ok) {
-            throw new Error(`Failed to delete records from ${table}: ${deleteResponse.statusText}`);
+            const errorText = await deleteResponse.text();
+            console.error('Delete response error:', errorText);
+            throw new Error(`Failed to delete records from ${table}: ${deleteResponse.status} ${deleteResponse.statusText}`);
           }
 
           stats.recordsDeleted = oldRecords.length;
@@ -185,13 +201,18 @@ Deno.serve(async (req: Request) => {
           // Update the cleanup log with deletion count
           if (!stats.error) {
             try {
-              await fetch(`${supabaseUrl}/rest/v1/cleanup_logs?table_name=eq.${table}&cleanup_date=gte.${new Date(Date.now() - 60000).toISOString()}`, {
+              const updateResponse = await fetch(`${supabaseUrl}/rest/v1/cleanup_logs?table_name=eq.${table}&cleanup_date=gte.${new Date(Date.now() - 60000).toISOString()}`, {
                 method: 'PATCH',
                 headers: supabaseHeaders,
                 body: JSON.stringify({
                   records_deleted: oldRecords.length
                 })
               });
+              
+              if (!updateResponse.ok) {
+                const errorText = await updateResponse.text();
+                console.error('Failed to update cleanup log:', errorText);
+              }
             } catch (updateError) {
               console.error(`Failed to update cleanup log for ${table}:`, updateError);
             }
@@ -235,7 +256,8 @@ Deno.serve(async (req: Request) => {
       await Deno.writeTextFile(summaryFileName, JSON.stringify(summary, null, 2));
       console.log(`Created summary file: ${summaryFileName}`);
     } catch (summaryError) {
-      console.error('Failed to create summary file:', summaryError);
+      const errorText = await historyResponse.text();
+      console.error('Failed to log notification history:', errorText);
     }
 
     return new Response(
