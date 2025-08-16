@@ -3,12 +3,12 @@
 
   1. Purpose
     - Deletes records older than 15 days from message_logs, user_sessions, chat_messages
-    - Archives deleted data as JSON files in /tmp directory
+    - Archives deleted data as CSV files in /tmp directory
     - Runs weekly on Sundays at 2 AM
 
   2. Functionality
     - Queries old records from each table
-    - Exports data to JSON files
+    - Exports data to CSV files
     - Deletes old records from database
     - Logs cleanup statistics
 
@@ -26,6 +26,34 @@ interface CleanupStats {
   recordsDeleted: number;
   archiveFile: string;
   error?: string;
+}
+
+// Helper function to convert array of objects to CSV
+function arrayToCSV(data: any[]): string {
+  if (data.length === 0) return '';
+  
+  // Get headers from the first object
+  const headers = Object.keys(data[0]);
+  
+  // Create CSV header row
+  const csvHeaders = headers.join(',');
+  
+  // Create CSV data rows
+  const csvRows = data.map(row => {
+    return headers.map(header => {
+      const value = row[header];
+      // Handle null/undefined values
+      if (value === null || value === undefined) return '';
+      // Escape quotes and wrap in quotes if contains comma, quote, or newline
+      const stringValue = String(value);
+      if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+        return `"${stringValue.replace(/"/g, '""')}"`;
+      }
+      return stringValue;
+    }).join(',');
+  });
+  
+  return [csvHeaders, ...csvRows].join('\n');
 }
 
 Deno.serve(async (req: Request) => {
@@ -97,17 +125,23 @@ Deno.serve(async (req: Request) => {
         if (oldRecords.length > 0) {
           // Create archive file
           const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-          const archiveFileName = `/tmp/${table}_archive_${timestamp}.json`;
+          const archiveFileName = `/tmp/${table}_archive_${timestamp}.csv`;
           
           try {
-            // Write archive file
-            await Deno.writeTextFile(archiveFileName, JSON.stringify({
-              table,
-              archiveDate: new Date().toISOString(),
-              cutoffDate: cutoffDateString,
-              recordCount: oldRecords.length,
-              records: oldRecords
-            }, null, 2));
+            // Convert to CSV and write archive file
+            const csvContent = arrayToCSV(oldRecords);
+            
+            // Add metadata as comments at the top
+            const metadataComments = [
+              `# Archive created: ${new Date().toISOString()}`,
+              `# Table: ${table}`,
+              `# Cutoff date: ${cutoffDateString}`,
+              `# Record count: ${oldRecords.length}`,
+              `# Columns: ${oldRecords.length > 0 ? Object.keys(oldRecords[0]).join(', ') : 'none'}`,
+              ''
+            ].join('\n');
+            
+            await Deno.writeTextFile(archiveFileName, metadataComments + csvContent);
             
             stats.archiveFile = archiveFileName;
             console.log(`Created archive file: ${archiveFileName}`);
@@ -164,7 +198,7 @@ Deno.serve(async (req: Request) => {
 
     console.log('Cleanup completed:', summary);
 
-    // Log cleanup summary to a file
+    // Log cleanup summary to a JSON file (summary remains JSON for readability)
     const summaryFileName = `/tmp/cleanup_summary_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
     try {
       await Deno.writeTextFile(summaryFileName, JSON.stringify(summary, null, 2));
