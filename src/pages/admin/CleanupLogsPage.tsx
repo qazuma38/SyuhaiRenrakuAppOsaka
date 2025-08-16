@@ -1,18 +1,14 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, Download, Database, FileText, Calendar, Play, RefreshCw } from 'lucide-react'
+import { ChevronLeft, Download, Database, Play, RefreshCw } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAppSelector } from '../../hooks/useAppSelector'
-import { CleanupLog } from '../../types/auth'
 
 const CleanupLogsPage: React.FC = () => {
   const navigate = useNavigate()
   const { user: currentUser } = useAppSelector((state) => state.auth)
-  const [logs, setLogs] = useState<CleanupLog[]>([])
-  const [loading, setLoading] = useState(true)
   const [executing, setExecuting] = useState(false)
-  const [selectedLog, setSelectedLog] = useState<CleanupLog | null>(null)
-  const [showCsvModal, setShowCsvModal] = useState(false)
+  const [downloading, setDownloading] = useState(false)
 
   // 管理者権限チェック
   if (!currentUser?.is_admin) {
@@ -29,30 +25,6 @@ const CleanupLogsPage: React.FC = () => {
         </div>
       </div>
     )
-  }
-
-  const loadLogs = async () => {
-    try {
-      console.log('Loading cleanup logs...')
-      const { data, error } = await supabase
-        .from('cleanup_logs')
-        .select('*')
-        .order('cleanup_date', { ascending: false })
-
-      if (error) {
-        console.error('Error loading cleanup logs:', error)
-        alert(`クリーンアップログの読み込みに失敗しました: ${error.message}`)
-        return
-      }
-
-      console.log('Loaded cleanup logs:', data)
-      setLogs(data || [])
-    } catch (error) {
-      console.error('Error in loadLogs:', error)
-      alert('ログの読み込み中にエラーが発生しました')
-    } finally {
-      setLoading(false)
-    }
   }
 
   const handleManualCleanup = async () => {
@@ -76,7 +48,6 @@ const CleanupLogsPage: React.FC = () => {
       console.log('Cleanup result:', data)
       if (data?.success) {
         alert(`✅ クリーンアップが完了しました\n\n${data.message}\n\n詳細:\n${JSON.stringify(data.summary?.details || [], null, 2)}`)
-        await loadLogs() // ログを再読み込み
       } else {
         alert(`❌ クリーンアップでエラーが発生しました\n\n${data?.error || '不明なエラー'}\n\n詳細: ${data?.details || ''}`)
       }
@@ -88,65 +59,91 @@ const CleanupLogsPage: React.FC = () => {
     }
   }
 
-  useEffect(() => {
-    loadLogs()
-  }, [])
+  const handleDownloadCleanupLogs = async () => {
+    setDownloading(true)
+    try {
+      console.log('Downloading cleanup logs...')
+      
+      // cleanup_logsテーブルの全データを取得
+      const { data, error } = await supabase
+        .from('cleanup_logs')
+        .select('*')
+        .order('cleanup_date', { ascending: false })
 
-  const handleDownloadCsv = (log: CleanupLog) => {
-    if (!log.csv_content) {
-      alert('❌ CSVデータがありません')
-      return
+      if (error) {
+        console.error('Error fetching cleanup logs:', error)
+        alert(`クリーンアップログの取得に失敗しました: ${error.message}`)
+        return
+      }
+
+      if (!data || data.length === 0) {
+        alert('ダウンロードするデータがありません')
+        return
+      }
+
+      // CSVヘッダーを作成
+      const headers = [
+        'ID',
+        'クリーンアップ日時',
+        'テーブル名',
+        '検出件数',
+        '削除件数',
+        'ファイルサイズ',
+        '作成日時'
+      ]
+
+      // CSVデータを作成
+      const csvRows = data.map(log => [
+        log.id,
+        new Date(log.cleanup_date).toLocaleString('ja-JP'),
+        log.table_name,
+        log.records_found.toString(),
+        log.records_deleted.toString(),
+        log.file_size ? log.file_size.toString() : '',
+        new Date(log.created_at).toLocaleString('ja-JP')
+      ])
+
+      // CSVコンテンツを生成
+      const csvContent = [
+        headers.join(','),
+        ...csvRows.map(row => row.map(cell => {
+          // セルにカンマ、引用符、改行が含まれている場合はエスケープ
+          const cellStr = String(cell)
+          if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
+            return `"${cellStr.replace(/"/g, '""')}"`
+          }
+          return cellStr
+        }).join(','))
+      ].join('\n')
+
+      // BOMを追加してExcelで文字化けを防ぐ
+      const bom = '\uFEFF'
+      const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' })
+      
+      // ダウンロード実行
+      const link = document.createElement('a')
+      const url = URL.createObjectURL(blob)
+      
+      link.setAttribute('href', url)
+      link.setAttribute('download', `cleanup_logs_${new Date().toISOString().split('T')[0]}.csv`)
+      link.style.visibility = 'hidden'
+      
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      
+      // URLオブジェクトをクリーンアップ
+      URL.revokeObjectURL(url)
+      
+      console.log('Cleanup logs CSV downloaded successfully')
+      alert('✅ クリーンアップログをCSVファイルとしてダウンロードしました')
+      
+    } catch (error) {
+      console.error('Error in handleDownloadCleanupLogs:', error)
+      alert(`CSVダウンロード中にエラーが発生しました: ${error}`)
+    } finally {
+      setDownloading(false)
     }
-
-    console.log('Downloading CSV for:', log.table_name, 'Size:', log.file_size)
-    const blob = new Blob([log.csv_content], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
-    const url = URL.createObjectURL(blob)
-    
-    link.setAttribute('href', url)
-    link.setAttribute('download', `${log.table_name}_cleanup_${log.cleanup_date.split('T')[0]}.csv`)
-    link.style.visibility = 'hidden'
-    
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    
-    // Clean up the URL object
-    URL.revokeObjectURL(url)
-  }
-
-  const handleViewCsv = (log: CleanupLog) => {
-    if (!log.csv_content) {
-      alert('❌ CSVデータがありません')
-      return
-    }
-    
-    console.log('Viewing CSV for:', log.table_name)
-    setSelectedLog(log)
-    setShowCsvModal(true)
-  }
-
-  const formatFileSize = (bytes?: number) => {
-    if (!bytes) return '-'
-    if (bytes < 1024) return `${bytes} B`
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-  }
-
-  if (loading) {
-    return (
-      <div style={styles.container}>
-        <div style={styles.header}>
-          <button style={styles.backButton} onClick={() => navigate('/admin')}>
-            <ChevronLeft size={24} color="#ffffff" />
-          </button>
-          <h1 style={styles.headerTitle}>クリーンアップログ</h1>
-        </div>
-        <div style={styles.loadingContainer}>
-          <p style={styles.loadingText}>読み込み中...</p>
-        </div>
-      </div>
-    )
   }
 
   return (
@@ -161,12 +158,12 @@ const CleanupLogsPage: React.FC = () => {
       <div style={styles.content}>
         <div style={styles.summarySection}>
           <Database size={48} color="#6366f1" />
-          <h2 style={styles.summaryTitle}>データクリーンアップ履歴</h2>
+          <h2 style={styles.summaryTitle}>データクリーンアップ管理</h2>
           <p style={styles.summaryText}>
-            15日以上古いレコードの削除履歴とアーカイブデータを管理します
+            15日以上古いレコードの削除とクリーンアップログの管理
           </p>
           
-          <div style={styles.manualExecutionSection}>
+          <div style={styles.actionsContainer}>
             <button
               style={{
                 ...styles.manualExecuteButton,
@@ -187,115 +184,68 @@ const CleanupLogsPage: React.FC = () => {
                 </>
               )}
             </button>
-            <p style={styles.manualExecuteDescription}>
-              スケジュールを待たずに即座にクリーンアップを実行します
+            
+            <button
+              style={{
+                ...styles.downloadButton,
+                ...(downloading ? styles.downloadButtonDisabled : {}),
+              }}
+              onClick={handleDownloadCleanupLogs}
+              disabled={downloading}
+            >
+              {downloading ? (
+                <>
+                  <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                  <span>ダウンロード中...</span>
+                </>
+              ) : (
+                <>
+                  <Download size={16} />
+                  <span>ログをCSVダウンロード</span>
+                </>
+              )}
+            </button>
+          </div>
+          
+          <div style={styles.descriptionsContainer}>
+            <p style={styles.actionDescription}>
+              <strong>手動実行:</strong> スケジュールを待たずに即座にクリーンアップを実行
+            </p>
+            <p style={styles.actionDescription}>
+              <strong>CSVダウンロード:</strong> cleanup_logsテーブル全体をCSVファイルとしてダウンロード
             </p>
           </div>
         </div>
 
-        <div style={styles.tableContainer}>
-          <table style={styles.table}>
-            <thead>
-              <tr style={styles.tableHeader}>
-                <th style={styles.th}>実行日時</th>
-                <th style={styles.th}>テーブル名</th>
-                <th style={styles.th}>検出件数</th>
-                <th style={styles.th}>削除件数</th>
-                <th style={styles.th}>ファイルサイズ</th>
-                <th style={styles.th}>操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              {logs.map((log) => (
-                <tr key={log.id} style={styles.tableRow}>
-                  <td style={styles.td}>
-                    <div style={styles.dateCell}>
-                      <Calendar size={16} color="#6b7280" />
-                      <span>{new Date(log.cleanup_date).toLocaleString('ja-JP')}</span>
-                    </div>
-                  </td>
-                  <td style={styles.td}>
-                    <span style={styles.tableBadge}>
-                      {log.table_name}
-                    </span>
-                  </td>
-                  <td style={styles.td}>{log.records_found.toLocaleString()}</td>
-                  <td style={styles.td}>{log.records_deleted.toLocaleString()}</td>
-                  <td style={styles.td}>{formatFileSize(log.file_size)}</td>
-                  <td style={styles.td}>
-                    <div style={styles.actionButtons}>
-                      {log.csv_content && (
-                        <>
-                          <button
-                            style={styles.viewButton}
-                            onClick={() => handleViewCsv(log)}
-                            title="CSVプレビュー"
-                          >
-                            <FileText size={16} />
-                          </button>
-                          <button
-                            style={styles.downloadButton}
-                            onClick={() => handleDownloadCsv(log)}
-                            title="CSVダウンロード"
-                          >
-                            <Download size={16} />
-                          </button>
-                        </>
-                      )}
-                      {!log.csv_content && (
-                        <span style={styles.noDataText}>データなし</span>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {logs.length === 0 && (
-            <div style={styles.emptyContainer}>
-              <Database size={48} color="#9ca3af" />
-              <p style={styles.emptyText}>クリーンアップログがありません</p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* CSV表示モーダル */}
-      {showCsvModal && selectedLog && (
-        <div style={styles.modalOverlay} onClick={() => setShowCsvModal(false)}>
-          <div style={styles.csvModal} onClick={(e) => e.stopPropagation()}>
-            <div style={styles.modalHeader}>
-              <h3 style={styles.modalTitle}>
-                {selectedLog.table_name} - CSV プレビュー
-              </h3>
-              <button
-                style={styles.closeButton}
-                onClick={() => setShowCsvModal(false)}
-              >
-                ×
-              </button>
+        <div style={styles.infoSection}>
+          <h3 style={styles.infoTitle}>クリーンアップについて</h3>
+          <div style={styles.infoGrid}>
+            <div style={styles.infoCard}>
+              <h4 style={styles.infoCardTitle}>対象テーブル</h4>
+              <ul style={styles.infoList}>
+                <li>message_logs</li>
+                <li>user_sessions</li>
+                <li>chat_messages</li>
+              </ul>
             </div>
             
-            <div style={styles.csvPreview}>
-              <pre style={styles.csvContent}>
-                {selectedLog.csv_content?.substring(0, 5000)}
-                {selectedLog.csv_content && selectedLog.csv_content.length > 5000 && '\n\n... (省略されました)'}
-              </pre>
+            <div style={styles.infoCard}>
+              <h4 style={styles.infoCardTitle}>削除基準</h4>
+              <p style={styles.infoText}>15日以上古いレコード</p>
             </div>
             
-            <div style={styles.modalActions}>
-              <button
-                style={styles.downloadModalButton}
-                onClick={() => handleDownloadCsv(selectedLog)}
-              >
-                <Download size={16} />
-                <span>ダウンロード</span>
-              </button>
+            <div style={styles.infoCard}>
+              <h4 style={styles.infoCardTitle}>自動実行</h4>
+              <p style={styles.infoText}>毎週日曜日 午前2:00-2:05（JST）</p>
+            </div>
+            
+            <div style={styles.infoCard}>
+              <h4 style={styles.infoCardTitle}>アーカイブ</h4>
+              <p style={styles.infoText}>削除前にCSV形式でデータベースに保存</p>
             </div>
           </div>
         </div>
-      )}
+      </div>
     </div>
   )
 }
@@ -347,14 +297,14 @@ const styles = {
   summaryText: {
     fontSize: '16px',
     color: '#6b7280',
-    margin: '0',
-    marginBottom: '24px',
+    margin: '0 0 32px 0',
   },
-  manualExecutionSection: {
+  actionsContainer: {
     display: 'flex',
-    flexDirection: 'column' as const,
-    alignItems: 'center',
-    gap: '8px',
+    justifyContent: 'center',
+    gap: '16px',
+    marginBottom: '24px',
+    flexWrap: 'wrap' as const,
   },
   manualExecuteButton: {
     backgroundColor: '#ef4444',
@@ -369,107 +319,90 @@ const styles = {
     alignItems: 'center',
     gap: '8px',
     transition: 'all 0.2s',
+    minWidth: '160px',
+    justifyContent: 'center',
   },
   manualExecuteButtonDisabled: {
     backgroundColor: '#9ca3af',
     cursor: 'not-allowed',
   },
-  manualExecuteDescription: {
-    fontSize: '12px',
-    color: '#6b7280',
-    textAlign: 'center' as const,
-    margin: '0',
-  },
-  tableContainer: {
-    backgroundColor: '#ffffff',
-    borderRadius: '12px',
-    overflow: 'hidden',
-    border: '1px solid #e5e7eb',
-  },
-  table: {
-    width: '100%',
-    borderCollapse: 'collapse' as const,
-  },
-  tableHeader: {
-    backgroundColor: '#f9fafb',
-  },
-  th: {
-    padding: '16px',
-    textAlign: 'left' as const,
-    fontSize: '14px',
-    fontWeight: '600',
-    color: '#374151',
-    borderBottom: '1px solid #e5e7eb',
-  },
-  tableRow: {
-    borderBottom: '1px solid #f3f4f6',
-  },
-  td: {
-    padding: '16px',
-    fontSize: '14px',
-    color: '#1f2937',
-  },
-  dateCell: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-  },
-  tableBadge: {
-    padding: '4px 8px',
-    borderRadius: '4px',
-    fontSize: '12px',
-    fontWeight: '600',
-    backgroundColor: '#dbeafe',
-    color: '#1e40af',
-  },
-  actionButtons: {
-    display: 'flex',
-    gap: '8px',
-  },
-  viewButton: {
-    backgroundColor: '#6366f1',
-    color: '#ffffff',
-    border: 'none',
-    borderRadius: '4px',
-    padding: '6px',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   downloadButton: {
     backgroundColor: '#10b981',
     color: '#ffffff',
     border: 'none',
-    borderRadius: '4px',
-    padding: '6px',
+    borderRadius: '8px',
+    padding: '12px 24px',
+    fontSize: '16px',
+    fontWeight: '600',
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
+    gap: '8px',
+    transition: 'all 0.2s',
+    minWidth: '200px',
     justifyContent: 'center',
   },
-  emptyContainer: {
+  downloadButtonDisabled: {
+    backgroundColor: '#9ca3af',
+    cursor: 'not-allowed',
+  },
+  descriptionsContainer: {
     display: 'flex',
     flexDirection: 'column' as const,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '64px 32px',
+    gap: '8px',
+    textAlign: 'left' as const,
+    maxWidth: '600px',
+    margin: '0 auto',
   },
-  emptyText: {
-    fontSize: '16px',
+  actionDescription: {
+    fontSize: '14px',
     color: '#6b7280',
-    marginTop: '16px',
-    margin: '16px 0 0 0',
+    margin: '0',
+    lineHeight: '1.5',
   },
-  loadingContainer: {
-    flex: 1,
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
+  infoSection: {
+    backgroundColor: '#ffffff',
+    borderRadius: '12px',
+    padding: '24px',
+    border: '1px solid #e5e7eb',
   },
-  loadingText: {
+  infoTitle: {
+    fontSize: '20px',
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginBottom: '20px',
+    margin: '0 0 20px 0',
+  },
+  infoGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+    gap: '16px',
+  },
+  infoCard: {
+    backgroundColor: '#f9fafb',
+    borderRadius: '8px',
+    padding: '16px',
+    border: '1px solid #e5e7eb',
+  },
+  infoCardTitle: {
     fontSize: '16px',
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: '8px',
+    margin: '0 0 8px 0',
+  },
+  infoText: {
+    fontSize: '14px',
     color: '#6b7280',
+    margin: '0',
+    lineHeight: '1.5',
+  },
+  infoList: {
+    fontSize: '14px',
+    color: '#6b7280',
+    margin: '0',
+    paddingLeft: '16px',
+    lineHeight: '1.5',
   },
   errorContainer: {
     flex: 1,
@@ -481,87 +414,6 @@ const styles = {
     fontSize: '18px',
     color: '#ef4444',
     textAlign: 'center' as const,
-  },
-  modalOverlay: {
-    position: 'fixed' as const,
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1000,
-  },
-  csvModal: {
-    backgroundColor: '#ffffff',
-    borderRadius: '12px',
-    width: '90%',
-    maxWidth: '800px',
-    maxHeight: '80%',
-    overflow: 'hidden',
-    display: 'flex',
-    flexDirection: 'column' as const,
-  },
-  modalHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '20px',
-    borderBottom: '1px solid #e5e7eb',
-  },
-  modalTitle: {
-    fontSize: '18px',
-    fontWeight: 'bold',
-    color: '#1f2937',
-    margin: '0',
-  },
-  closeButton: {
-    background: 'none',
-    border: 'none',
-    fontSize: '24px',
-    color: '#6b7280',
-    cursor: 'pointer',
-    padding: '4px',
-  },
-  csvPreview: {
-    flex: 1,
-    overflow: 'auto',
-    padding: '20px',
-    backgroundColor: '#f9fafb',
-  },
-  csvContent: {
-    fontSize: '12px',
-    fontFamily: 'monospace',
-    color: '#374151',
-    margin: '0',
-    whiteSpace: 'pre-wrap' as const,
-    wordBreak: 'break-all' as const,
-  },
-  modalActions: {
-    padding: '20px',
-    borderTop: '1px solid #e5e7eb',
-    display: 'flex',
-    justifyContent: 'flex-end',
-  },
-  downloadModalButton: {
-    backgroundColor: '#10b981',
-    color: '#ffffff',
-    border: 'none',
-    borderRadius: '8px',
-    padding: '12px 20px',
-    fontSize: '16px',
-    fontWeight: '600',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-  },
-  noDataText: {
-    fontSize: '12px',
-    color: '#9ca3af',
-    fontStyle: 'italic',
   },
 }
 
