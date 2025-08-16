@@ -516,6 +516,49 @@ Android Chromeでアプリをインストールするには：
               <h3 style={styles.sectionTitle}>コース管理</h3>
             </div>
 
+            {/* 本日の担当設定 */}
+            <div style={styles.assignmentSection}>
+              <h4 style={styles.subsectionTitle}>本日の担当設定</h4>
+              {registeredCourses.length === 0 ? (
+                <div style={styles.emptyState}>
+                  <p style={styles.emptyText}>登録されたコースがありません</p>
+                  <p style={styles.emptySubText}>下記の「登録コース」セクションからコースを追加してください</p>
+                </div>
+              ) : (
+                registeredCourses.map((course) => {
+                  const isAssigned = assignedCourses.some(ac => ac.course_id === course.course_id)
+                  
+                  return (
+                    <div
+                      key={course.course_id}
+                      style={{
+                        ...styles.assignmentButton,
+                        ...(isAssigned ? styles.assignedButton : styles.unassignedButton),
+                      }}
+                      onClick={() => handleToggleCourseAssignment(course.course_id, course.course_name)}
+                    >
+                      <div style={styles.assignmentButtonContent}>
+                        <div style={styles.courseInfo}>
+                          <p style={styles.courseId}>{course.course_id}</p>
+                          <p style={styles.courseName}>{course.course_name}</p>
+                        </div>
+                        {isAssigned ? (
+                          <div style={styles.assignedIndicator}>
+                            <Check size={16} color="#ffffff" />
+                            <span style={styles.assignedText}>担当中</span>
+                          </div>
+                        ) : (
+                          <div style={styles.unassignedIndicator}>
+                            <span style={styles.unassignedText}>担当する</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+
             {/* 登録コース一覧 */}
             <div style={styles.registeredCoursesSection}>
               <div style={styles.registeredCoursesHeader}>
@@ -552,51 +595,6 @@ Android Chromeでアプリをインストールするには：
                 </div>
               )}
             </div>
-
-            {/* 本日の担当設定 */}
-            {registeredCourses.length > 0 && (
-              <div style={styles.assignmentSection}>
-                <h4 style={styles.subsectionTitle}>本日の担当設定</h4>
-                {registeredCourses.map((course) => {
-                  const isAssigned = assignedCourses.some(ac => ac.course_id === course.course_id)
-                  
-                  return (
-                    <div
-                      key={course.course_id}
-                      style={{
-                        ...styles.assignmentButton,
-                        ...(isAssigned ? styles.assignedButton : styles.unassignedButton),
-                      }}
-                      onClick={() => handleToggleCourseAssignment(course.course_id, course.course_name)}
-                    >
-                      <div style={styles.assignmentButtonContent}>
-                        <div style={styles.courseInfo}>
-                          <p style={styles.courseId}>{course.course_id}</p>
-                          <p style={styles.courseName}>{course.course_name}</p>
-                        </div>
-                        {isAssigned ? (
-                          <div style={styles.assignedIndicator}>
-                            <Check size={16} color="#ffffff" />
-                            <span style={styles.assignedText}>担当中</span>
-                          </div>
-                        ) : (
-                          <div style={styles.unassignedIndicator}>
-                            <span style={styles.unassignedText}>担当する</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-
-            {registeredCourses.length === 0 && (
-              <div style={styles.emptyState}>
-                <p style={styles.emptyText}>登録されたコースがありません</p>
-                <p style={styles.emptySubText}>コースを追加してから担当設定を行ってください</p>
-              </div>
-            )}
           </div>
         )}
 
