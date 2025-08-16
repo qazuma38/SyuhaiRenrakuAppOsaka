@@ -980,6 +980,13 @@ const styles = {
     marginTop: '16px',
     margin: '16px 0 0 0',
   },
+  emptySubText: {
+    fontSize: '14px',
+    color: '#9ca3af',
+    marginTop: '8px',
+    margin: '8px 0 0 0',
+    textAlign: 'center' as const,
+  },
   infoSection: {
     backgroundColor: '#ffffff',
     borderRadius: '12px',
