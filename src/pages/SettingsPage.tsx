@@ -492,6 +492,13 @@ Android Chromeでアプリをインストールするには：
           <p style={styles.infoText}>ユーザー名：{user?.name || '取得中...'}</p>
           <p style={styles.infoText}>ユーザータイプ：{user?.user_type === 'employee' ? '社員' : '顧客'}</p>
           <p style={styles.infoText}>拠点：{user?.base || '取得中...'}</p>
+          <p style={styles.infoText}>
+            管理者権限：{user?.is_admin ? (
+              <span style={styles.adminStatusEnabled}>有効</span>
+            ) : (
+              <span style={styles.adminStatusDisabled}>無効</span>
+            )}
+          </p>
           {user?.phone && (
             <p style={styles.infoText}>電話番号：{user.phone}</p>
           )}
@@ -1570,6 +1577,19 @@ const styles = {
     color: '#7f1d1d',
     margin: '0',
     fontStyle: 'italic',
+  },
+  adminStatusEnabled: {
+    color: '#dc2626',
+    fontWeight: 'bold',
+    backgroundColor: '#fef2f2',
+    padding: '2px 6px',
+    borderRadius: '4px',
+    fontSize: '14px',
+  },
+  adminStatusDisabled: {
+    color: '#6b7280',
+    fontWeight: 'normal',
+    fontSize: '14px',
   },
 }
 
