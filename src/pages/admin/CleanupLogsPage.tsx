@@ -33,6 +33,7 @@ const CleanupLogsPage: React.FC = () => {
 
   const loadLogs = async () => {
     try {
+      console.log('Loading cleanup logs...')
       const { data, error } = await supabase
         .from('cleanup_logs')
         .select('*')
@@ -40,10 +41,11 @@ const CleanupLogsPage: React.FC = () => {
 
       if (error) {
         console.error('Error loading cleanup logs:', error)
-        alert('クリーンアップログの読み込みに失敗しました')
+        alert(`クリーンアップログの読み込みに失敗しました: ${error.message}`)
         return
       }
 
+      console.log('Loaded cleanup logs:', data)
       setLogs(data || [])
     } catch (error) {
       console.error('Error in loadLogs:', error)
@@ -54,31 +56,33 @@ const CleanupLogsPage: React.FC = () => {
   }
 
   const handleManualCleanup = async () => {
-    if (!window.confirm('データクリーンアップを手動実行しますか？\n15日以上古いレコードが削除されます。')) {
+    if (!window.confirm('データクリーンアップを手動実行しますか？\n\n⚠️ 15日以上古いレコードが削除されます。\n削除前にCSVファイルとしてアーカイブされます。')) {
       return
     }
 
     setExecuting(true)
     try {
+      console.log('Executing manual cleanup...')
       const { data, error } = await supabase.functions.invoke('cleanup-old-data', {
         body: {}
       })
 
       if (error) {
         console.error('Error executing cleanup:', error)
-        alert('クリーンアップの実行に失敗しました')
+        alert(`クリーンアップの実行に失敗しました: ${error.message}`)
         return
       }
 
+      console.log('Cleanup result:', data)
       if (data?.success) {
-        alert(`クリーンアップが完了しました\n${data.message}`)
+        alert(`✅ クリーンアップが完了しました\n\n${data.message}\n\n詳細:\n${JSON.stringify(data.summary?.details || [], null, 2)}`)
         await loadLogs() // ログを再読み込み
       } else {
-        alert('クリーンアップでエラーが発生しました')
+        alert(`❌ クリーンアップでエラーが発生しました\n\n${data?.error || '不明なエラー'}\n\n詳細: ${data?.details || ''}`)
       }
     } catch (error) {
       console.error('Error in handleManualCleanup:', error)
-      alert('クリーンアップの実行中にエラーが発生しました')
+      alert(`クリーンアップの実行中にエラーが発生しました: ${error}`)
     } finally {
       setExecuting(false)
     }
@@ -90,10 +94,11 @@ const CleanupLogsPage: React.FC = () => {
 
   const handleDownloadCsv = (log: CleanupLog) => {
     if (!log.csv_content) {
-      alert('CSVデータがありません')
+      alert('❌ CSVデータがありません')
       return
     }
 
+    console.log('Downloading CSV for:', log.table_name, 'Size:', log.file_size)
     const blob = new Blob([log.csv_content], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
     const url = URL.createObjectURL(blob)
@@ -105,9 +110,18 @@ const CleanupLogsPage: React.FC = () => {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+    
+    // Clean up the URL object
+    URL.revokeObjectURL(url)
   }
 
   const handleViewCsv = (log: CleanupLog) => {
+    if (!log.csv_content) {
+      alert('❌ CSVデータがありません')
+      return
+    }
+    
+    console.log('Viewing CSV for:', log.table_name)
     setSelectedLog(log)
     setShowCsvModal(true)
   }
@@ -227,6 +241,9 @@ const CleanupLogsPage: React.FC = () => {
                             <Download size={16} />
                           </button>
                         </>
+                      )}
+                      {!log.csv_content && (
+                        <span style={styles.noDataText}>データなし</span>
                       )}
                     </div>
                   </td>
@@ -540,6 +557,11 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
+  },
+  noDataText: {
+    fontSize: '12px',
+    color: '#9ca3af',
+    fontStyle: 'italic',
   },
 }
 
