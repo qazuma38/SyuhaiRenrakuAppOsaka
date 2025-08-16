@@ -19,6 +19,7 @@ const CustomersPage: React.FC = () => {
     showRePickupIcon: true,
     messageIconDisplayEnabled: true
   })
+  const [settingsLoaded, setSettingsLoaded] = useState(false)
 
   const loadData = async () => {
     if (!user) return
@@ -30,20 +31,27 @@ const CustomersPage: React.FC = () => {
     }
   }
 
-  useEffect(() => {
-    loadData()
-    loadMessageIconSettings()
-  }, [user, dispatch])
 
   const loadMessageIconSettings = async () => {
     try {
+      console.log('Loading message icon settings...')
       const settings = await SystemSettingService.getMessageIconSettings()
+      console.log('Loaded settings:', settings)
       setMessageIconSettings(settings)
+      setSettingsLoaded(true)
     } catch (error) {
       console.error('Error loading message icon settings:', error)
+      setSettingsLoaded(true)
     }
   }
 
+  useEffect(() => {
+    loadData()
+  }, [user, dispatch])
+
+  useEffect(() => {
+    loadMessageIconSettings()
+  }, [])
   useEffect(() => {
     if (customersError) {
       console.error('Customer error:', customersError)
@@ -63,14 +71,22 @@ const CustomersPage: React.FC = () => {
   
   // メッセージタイプに応じたアイコンとテキストを取得
   const getMessageTypeDisplay = (messageType?: string | null) => {
+    console.log('getMessageTypeDisplay called with:', messageType)
+    console.log('Current settings:', messageIconSettings)
+    console.log('Settings loaded:', settingsLoaded)
+    
     // メッセージアイコン表示が無効な場合は何も表示しない
     if (!messageIconSettings.messageIconDisplayEnabled) {
+      console.log('Message icon display disabled')
       return null
     }
 
     switch (messageType) {
       case 'pickup_yes':
-        if (!messageIconSettings.showPickupYesIcon) return null
+        if (!messageIconSettings.showPickupYesIcon) {
+          console.log('Pickup yes icon disabled')
+          return null
+        }
         return {
           icon: Truck,
           text: '検体あり',
@@ -78,7 +94,10 @@ const CustomersPage: React.FC = () => {
           bgColor: '#dcfce7'
         }
       case 'pickup_no':
-        if (!messageIconSettings.showPickupNoIcon) return null
+        if (!messageIconSettings.showPickupNoIcon) {
+          console.log('Pickup no icon disabled')
+          return null
+        }
         return {
           icon: X,
           text: '検体なし',
@@ -86,7 +105,10 @@ const CustomersPage: React.FC = () => {
           bgColor: '#fee2e2'
         }
       case 're_pickup':
-        if (!messageIconSettings.showRePickupIcon) return null
+        if (!messageIconSettings.showRePickupIcon) {
+          console.log('Re-pickup icon disabled')
+          return null
+        }
         return {
           icon: RotateCcw,
           text: '再集配',
@@ -101,6 +123,7 @@ const CustomersPage: React.FC = () => {
           bgColor: '#f3f4f6'
         }
       default:
+        console.log('Unknown message type:', messageType)
         return null
     }
   }

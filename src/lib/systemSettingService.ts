@@ -114,19 +114,26 @@ export class SystemSettingService {
     messageIconDisplayEnabled: boolean;
   }> {
     try {
+      console.log('SystemSettingService: Getting message icon settings...')
       const settings = await this.getSystemSettings()
+      console.log('SystemSettingService: All settings:', settings)
       
       const getSettingBoolean = (key: string, defaultValue: boolean = true): boolean => {
         const setting = settings.find(s => s.setting_key === key)
-        return setting ? setting.setting_value === 'true' : defaultValue
+        const value = setting ? setting.setting_value === 'true' : defaultValue
+        console.log(`SystemSettingService: Setting ${key} = ${value} (raw: ${setting?.setting_value})`)
+        return value
       }
 
-      return {
+      const result = {
         showPickupYesIcon: getSettingBoolean('show_pickup_yes_icon'),
         showPickupNoIcon: getSettingBoolean('show_pickup_no_icon'),
         showRePickupIcon: getSettingBoolean('show_re_pickup_icon'),
         messageIconDisplayEnabled: getSettingBoolean('message_icon_display_enabled')
       }
+      
+      console.log('SystemSettingService: Final result:', result)
+      return result
     } catch (error) {
       console.error('Error in getMessageIconSettings:', error)
       // エラー時はデフォルト値を返す
@@ -147,22 +154,32 @@ export class SystemSettingService {
     messageIconDisplayEnabled?: boolean;
   }): Promise<boolean> {
     try {
+      console.log('SystemSettingService: Updating settings:', settings)
       const updates = []
 
       if (settings.showPickupYesIcon !== undefined) {
-        updates.push(this.updateSettingValue('show_pickup_yes_icon', settings.showPickupYesIcon.toString()))
+        const updatePromise = this.updateSettingValue('show_pickup_yes_icon', settings.showPickupYesIcon.toString())
+        updates.push(updatePromise)
+        console.log('SystemSettingService: Updating show_pickup_yes_icon to', settings.showPickupYesIcon.toString())
       }
       if (settings.showPickupNoIcon !== undefined) {
-        updates.push(this.updateSettingValue('show_pickup_no_icon', settings.showPickupNoIcon.toString()))
+        const updatePromise = this.updateSettingValue('show_pickup_no_icon', settings.showPickupNoIcon.toString())
+        updates.push(updatePromise)
+        console.log('SystemSettingService: Updating show_pickup_no_icon to', settings.showPickupNoIcon.toString())
       }
       if (settings.showRePickupIcon !== undefined) {
-        updates.push(this.updateSettingValue('show_re_pickup_icon', settings.showRePickupIcon.toString()))
+        const updatePromise = this.updateSettingValue('show_re_pickup_icon', settings.showRePickupIcon.toString())
+        updates.push(updatePromise)
+        console.log('SystemSettingService: Updating show_re_pickup_icon to', settings.showRePickupIcon.toString())
       }
       if (settings.messageIconDisplayEnabled !== undefined) {
-        updates.push(this.updateSettingValue('message_icon_display_enabled', settings.messageIconDisplayEnabled.toString()))
+        const updatePromise = this.updateSettingValue('message_icon_display_enabled', settings.messageIconDisplayEnabled.toString())
+        updates.push(updatePromise)
+        console.log('SystemSettingService: Updating message_icon_display_enabled to', settings.messageIconDisplayEnabled.toString())
       }
 
       const results = await Promise.all(updates)
+      console.log('SystemSettingService: Update results:', results)
       return results.every(result => result === true)
     } catch (error) {
       console.error('Error in updateMessageIconSettings:', error)

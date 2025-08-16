@@ -59,6 +59,7 @@ const SystemSettingsManagementPage: React.FC = () => {
   const handleSaveSettings = async () => {
     setSaving(true)
     try {
+      console.log('Saving settings:', messageIconSettings)
       const success = await SystemSettingService.updateMessageIconSettings(messageIconSettings)
       
       if (success) {
