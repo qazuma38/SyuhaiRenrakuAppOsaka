@@ -3,6 +3,7 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import { ChevronLeft, Send, Building2, Truck, X, RotateCcw, RefreshCw } from 'lucide-react'
 import { ChatService } from '../lib/chatService'
 import { PresetMessageService } from '../lib/presetMessageService'
+import { SystemSettingService } from '../lib/systemSettingService'
 import { useAppSelector } from '../hooks/useAppSelector'
 import { ChatMessage, PresetMessage } from '../types/auth'
 
@@ -33,9 +34,30 @@ const IndividualChatPage: React.FC = () => {
   const [confirmationModal, setConfirmationModal] = useState(false)
   const [selectedTemplate, setSelectedTemplate] = useState<(typeof employeeTemplates[0] | typeof customerTemplates[0]) | null>(null)
   const [customPresetMessages, setCustomPresetMessages] = useState<PresetMessage[]>([])
+  const [messageIconSettings, setMessageIconSettings] = useState({
+    showPickupYesIcon: true,
+    showPickupNoIcon: true,
+    showRePickupIcon: true,
+    messageIconDisplayEnabled: true
+  })
+  const [settingsLoaded, setSettingsLoaded] = useState(false)
 
   // メッセージリストの参照を作成
   const messagesListRef = React.useRef<HTMLDivElement>(null)
+
+  // Load system settings for message icon display
+  const loadMessageIconSettings = async () => {
+    try {
+      console.log('IndividualChat: Loading message icon settings...')
+      const settings = await SystemSettingService.getMessageIconSettings()
+      console.log('IndividualChat: Loaded settings:', settings)
+      setMessageIconSettings(settings)
+      setSettingsLoaded(true)
+    } catch (error) {
+      console.error('IndividualChat: Error loading message icon settings:', error)
+      setSettingsLoaded(true)
+    }
+  }
 
   // Load custom preset messages for customers
   const loadCustomPresetMessages = async () => {
@@ -50,6 +72,7 @@ const IndividualChatPage: React.FC = () => {
   }
 
   useEffect(() => {
+    loadMessageIconSettings()
     loadCustomPresetMessages()
   }, [user])
 
@@ -148,11 +171,40 @@ const IndividualChatPage: React.FC = () => {
 
   // Create dynamic templates based on user type and custom presets
   const getDynamicTemplates = () => {
+    console.log('IndividualChat: getDynamicTemplates called')
+    console.log('IndividualChat: Current settings:', messageIconSettings)
+    console.log('IndividualChat: Settings loaded:', settingsLoaded)
+    
+    // メッセージアイコン表示が無効な場合は空の配列を返す
+    if (!messageIconSettings.messageIconDisplayEnabled) {
+      console.log('IndividualChat: Message icon display disabled, returning empty templates')
+      return []
+    }
+
     if (user?.user_type === 'employee') {
       return employeeTemplates
     } else {
       // For customers, combine default templates with custom preset messages
-      const defaultTemplates = customerTemplates
+      let defaultTemplates = customerTemplates.filter(template => {
+        console.log('IndividualChat: Filtering template:', template.type)
+        switch (template.type) {
+          case 'pickup_yes':
+            const showPickupYes = messageIconSettings.showPickupYesIcon
+            console.log('IndividualChat: pickup_yes template, show:', showPickupYes)
+            return showPickupYes
+          case 'pickup_no':
+            const showPickupNo = messageIconSettings.showPickupNoIcon
+            console.log('IndividualChat: pickup_no template, show:', showPickupNo)
+            return showPickupNo
+          case 're_pickup':
+            const showRePickup = messageIconSettings.showRePickupIcon
+            console.log('IndividualChat: re_pickup template, show:', showRePickup)
+            return showRePickup
+          default:
+            return true
+        }
+      })
+      
       const customTemplates = customPresetMessages.slice(0, 2).map((preset, index) => ({
         id: `custom_${preset.id}`,
         icon: preset.message_type === 'pickup_yes' ? Truck : 
@@ -175,6 +227,7 @@ const IndividualChatPage: React.FC = () => {
       })
       
       // Return maximum of 5 templates (3 default + 2 custom)
+      console.log('IndividualChat: Final templates count:', allTemplates.length)
       return allTemplates.slice(0, 5)
     }
   }
