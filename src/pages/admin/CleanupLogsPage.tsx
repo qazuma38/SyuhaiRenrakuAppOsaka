@@ -47,6 +47,9 @@ const CleanupLogsPage: React.FC = () => {
     try {
       console.log('Loading cleanup logs...')
       console.log('Current user:', currentUser)
+      console.log('User is_admin:', currentUser?.is_admin)
+      console.log('Supabase URL:', import.meta.env.VITE_SUPABASE_URL)
+      console.log('Making request to cleanup_logs table...')
       
       const { data, error } = await supabase
         .from('cleanup_logs')
@@ -61,15 +64,18 @@ const CleanupLogsPage: React.FC = () => {
           hint: error.hint,
           code: error.code
         })
+        console.error('Full error object:', JSON.stringify(error, null, 2))
         alert('クリーンアップログの読み込みに失敗しました')
         return
       }
 
       console.log('Cleanup logs loaded:', data)
       console.log('Number of records:', data?.length || 0)
+      console.log('Raw data from Supabase:', JSON.stringify(data, null, 2))
       setCleanupLogs(data || [])
     } catch (error) {
       console.error('Error in loadCleanupLogs:', error)
+      console.error('Catch block error details:', error)
       alert('クリーンアップログの読み込み中にエラーが発生しました')
     } finally {
       setLoading(false)
@@ -78,6 +84,10 @@ const CleanupLogsPage: React.FC = () => {
 
   useEffect(() => {
     console.log('CleanupLogsPage mounted, loading data...')
+    console.log('Environment check:')
+    console.log('- VITE_SUPABASE_URL:', import.meta.env.VITE_SUPABASE_URL ? 'Set' : 'Not set')
+    console.log('- VITE_SUPABASE_ANON_KEY:', import.meta.env.VITE_SUPABASE_ANON_KEY ? 'Set' : 'Not set')
+    console.log('- Current user on mount:', currentUser)
     loadCleanupLogs()
   }, [])
 
@@ -123,6 +133,8 @@ const CleanupLogsPage: React.FC = () => {
     setDownloading(true)
     try {
       console.log('Downloading cleanup logs...')
+      console.log('Current user for download:', currentUser)
+      console.log('User is_admin for download:', currentUser?.is_admin)
       
       // cleanup_logsテーブルの全データを取得（管理者権限で）
       const { data, error } = await supabase
@@ -138,12 +150,14 @@ const CleanupLogsPage: React.FC = () => {
           hint: error.hint,
           code: error.code
         })
+        console.error('Download error - Full error object:', JSON.stringify(error, null, 2))
         alert(`クリーンアップログの取得に失敗しました: ${error.message}`)
         return
       }
 
       console.log('Downloaded cleanup logs data:', data)
       console.log('Number of records for download:', data?.length || 0)
+      console.log('Download - Raw data from Supabase:', JSON.stringify(data, null, 2))
       
       if (!data || data.length === 0) {
         alert('ダウンロードするデータがありません')
