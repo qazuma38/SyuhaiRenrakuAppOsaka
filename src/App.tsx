@@ -18,6 +18,7 @@ import CoursesManagementPage from './pages/admin/CoursesManagementPage'
 import RegisteredCoursesManagementPage from './pages/admin/RegisteredCoursesManagementPage'
 import EmployeeCoursesManagementPage from './pages/admin/EmployeeCoursesManagementPage'
 import CustomerCoursesManagementPage from './pages/admin/CustomerCoursesManagementPage'
+import SystemSettingsManagementPage from './pages/admin/SystemSettingsManagementPage'
 
 function App() {
   const dispatch = useAppDispatch()
@@ -58,6 +59,7 @@ function App() {
       <Route path="/admin/registered-courses" element={<RegisteredCoursesManagementPage />} />
       <Route path="/admin/employee-courses" element={<EmployeeCoursesManagementPage />} />
       <Route path="/admin/customer-courses" element={<CustomerCoursesManagementPage />} />
+      <Route path="/admin/system-settings" element={<SystemSettingsManagementPage />} />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   )

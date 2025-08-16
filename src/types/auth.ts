@@ -126,3 +126,12 @@ export interface Employee {
   isRePickupAssigned: boolean;
   unreadCount: number;
 }
+
+export interface SystemSetting {
+  id: string;
+  setting_key: string;
+  setting_value: string;
+  description?: string;
+  created_at: string;
+  updated_at: string;
+}

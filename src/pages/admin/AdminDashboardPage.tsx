@@ -1,6 +1,6 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, Database, Users, MapPin, BookOpen, UserCheck, Building2 } from 'lucide-react'
+import { ChevronLeft, Database, Users, MapPin, BookOpen, UserCheck, Building2, Settings } from 'lucide-react'
 import { useAppSelector } from '../../hooks/useAppSelector'
 
 const AdminDashboardPage: React.FC = () => {
@@ -64,6 +64,14 @@ const AdminDashboardPage: React.FC = () => {
       icon: Building2,
       color: '#ef4444',
       path: '/admin/customer-courses'
+    },
+    {
+      id: 'system-settings',
+      title: 'システム設定管理',
+      description: 'アプリケーション全体の設定管理',
+      icon: Settings,
+      color: '#6366f1',
+      path: '/admin/system-settings'
     }
   ]
 

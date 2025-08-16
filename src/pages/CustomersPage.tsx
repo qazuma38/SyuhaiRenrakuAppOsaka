@@ -4,6 +4,7 @@ import { Search, Building2, UserCheck, RotateCcw, Truck, X } from 'lucide-react'
 import { useAppSelector } from '../hooks/useAppSelector'
 import { useAppDispatch } from '../hooks/useAppDispatch'
 import { loadCustomersForEmployee, loadEmployeesForCustomer } from '../store/slices/customerSlice'
+import { SystemSettingService } from '../lib/systemSettingService'
 import { Customer, Employee } from '../types/auth'
 
 const CustomersPage: React.FC = () => {
@@ -12,6 +13,12 @@ const CustomersPage: React.FC = () => {
   const { user } = useAppSelector((state) => state.auth)
   const { customers, employees, loading: customersLoading, error: customersError } = useAppSelector((state) => state.customer)
   const [searchQuery, setSearchQuery] = useState('')
+  const [messageIconSettings, setMessageIconSettings] = useState({
+    showPickupYesIcon: true,
+    showPickupNoIcon: true,
+    showRePickupIcon: true,
+    messageIconDisplayEnabled: true
+  })
 
   const loadData = async () => {
     if (!user) return
@@ -25,7 +32,17 @@ const CustomersPage: React.FC = () => {
 
   useEffect(() => {
     loadData()
+    loadMessageIconSettings()
   }, [user, dispatch])
+
+  const loadMessageIconSettings = async () => {
+    try {
+      const settings = await SystemSettingService.getMessageIconSettings()
+      setMessageIconSettings(settings)
+    } catch (error) {
+      console.error('Error loading message icon settings:', error)
+    }
+  }
 
   useEffect(() => {
     if (customersError) {
@@ -46,8 +63,14 @@ const CustomersPage: React.FC = () => {
   
   // メッセージタイプに応じたアイコンとテキストを取得
   const getMessageTypeDisplay = (messageType?: string | null) => {
+    // メッセージアイコン表示が無効な場合は何も表示しない
+    if (!messageIconSettings.messageIconDisplayEnabled) {
+      return null
+    }
+
     switch (messageType) {
       case 'pickup_yes':
+        if (!messageIconSettings.showPickupYesIcon) return null
         return {
           icon: Truck,
           text: '検体あり',
@@ -55,6 +78,7 @@ const CustomersPage: React.FC = () => {
           bgColor: '#dcfce7'
         }
       case 'pickup_no':
+        if (!messageIconSettings.showPickupNoIcon) return null
         return {
           icon: X,
           text: '検体なし',
@@ -62,6 +86,7 @@ const CustomersPage: React.FC = () => {
           bgColor: '#fee2e2'
         }
       case 're_pickup':
+        if (!messageIconSettings.showRePickupIcon) return null
         return {
           icon: RotateCcw,
           text: '再集配',
