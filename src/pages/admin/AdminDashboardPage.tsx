@@ -72,6 +72,14 @@ const AdminDashboardPage: React.FC = () => {
       icon: Settings,
       color: '#6366f1',
       path: '/admin/system-settings'
+    },
+    {
+      id: 'cleanup-logs',
+      title: 'クリーンアップログ',
+      description: 'データクリーンアップ履歴とCSVアーカイブ',
+      icon: Database,
+      color: '#8b5cf6',
+      path: '/admin/cleanup-logs'
     }
   ]
 

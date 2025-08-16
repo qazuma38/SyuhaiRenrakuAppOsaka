@@ -123,10 +123,6 @@ Deno.serve(async (req: Request) => {
         };
 
         if (oldRecords.length > 0) {
-          // Create archive file
-          const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-          const archiveFileName = `/tmp/${table}_archive_${timestamp}.csv`;
-          
           try {
             // Convert to CSV and write archive file
             const csvContent = arrayToCSV(oldRecords);
@@ -141,13 +137,33 @@ Deno.serve(async (req: Request) => {
               ''
             ].join('\n');
             
-            await Deno.writeTextFile(archiveFileName, metadataComments + csvContent);
+            const fullCsvContent = metadataComments + csvContent;
+            const fileSize = new TextEncoder().encode(fullCsvContent).length;
             
-            stats.archiveFile = archiveFileName;
-            console.log(`Created archive file: ${archiveFileName}`);
+            // Save CSV content to database
+            const logResponse = await fetch(`${supabaseUrl}/rest/v1/cleanup_logs`, {
+              method: 'POST',
+              headers: supabaseHeaders,
+              body: JSON.stringify({
+                cleanup_date: new Date().toISOString(),
+                table_name: table,
+                records_found: oldRecords.length,
+                records_deleted: 0, // Will be updated after deletion
+                csv_content: fullCsvContent,
+                file_size: fileSize
+              })
+            });
+
+            if (!logResponse.ok) {
+              throw new Error(`Failed to save cleanup log: ${logResponse.statusText}`);
+            }
+
+            const logData = await logResponse.json();
+            stats.archiveFile = `Database record: ${logData[0]?.id || 'unknown'}`;
+            console.log(`Saved CSV content to database for ${table}`);
           } catch (fileError) {
-            console.error(`Failed to create archive file for ${table}:`, fileError);
-            stats.error = `Archive creation failed: ${fileError.message}`;
+            console.error(`Failed to save CSV content for ${table}:`, fileError);
+            stats.error = `CSV save failed: ${fileError.message}`;
           }
 
           // Delete old records
@@ -165,6 +181,21 @@ Deno.serve(async (req: Request) => {
 
           stats.recordsDeleted = oldRecords.length;
           console.log(`Deleted ${oldRecords.length} records from ${table}`);
+
+          // Update the cleanup log with deletion count
+          if (!stats.error) {
+            try {
+              await fetch(`${supabaseUrl}/rest/v1/cleanup_logs?table_name=eq.${table}&cleanup_date=gte.${new Date(Date.now() - 60000).toISOString()}`, {
+                method: 'PATCH',
+                headers: supabaseHeaders,
+                body: JSON.stringify({
+                  records_deleted: oldRecords.length
+                })
+              });
+            } catch (updateError) {
+              console.error(`Failed to update cleanup log for ${table}:`, updateError);
+            }
+          }
         }
 
         cleanupResults.push(stats);

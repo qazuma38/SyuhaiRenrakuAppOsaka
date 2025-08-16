@@ -135,3 +135,14 @@ export interface SystemSetting {
   created_at: string;
   updated_at: string;
 }
+
+export interface CleanupLog {
+  id: string;
+  cleanup_date: string;
+  table_name: string;
+  records_found: number;
+  records_deleted: number;
+  csv_content?: string;
+  file_size?: number;
+  created_at: string;
+}
