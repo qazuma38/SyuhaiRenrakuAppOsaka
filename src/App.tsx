@@ -12,6 +12,12 @@ import CoursesPage from './pages/CoursesPage'
 import SettingsPage from './pages/SettingsPage'
 import IndividualChatPage from './pages/IndividualChatPage'
 import NotFoundPage from './pages/NotFoundPage'
+import AdminDashboardPage from './pages/admin/AdminDashboardPage'
+import UsersManagementPage from './pages/admin/UsersManagementPage'
+import CoursesManagementPage from './pages/admin/CoursesManagementPage'
+import RegisteredCoursesManagementPage from './pages/admin/RegisteredCoursesManagementPage'
+import EmployeeCoursesManagementPage from './pages/admin/EmployeeCoursesManagementPage'
+import CustomerCoursesManagementPage from './pages/admin/CustomerCoursesManagementPage'
 
 function App() {
   const dispatch = useAppDispatch()
@@ -46,6 +52,12 @@ function App() {
         <Route path="settings" element={<SettingsPage />} />
       </Route>
       <Route path="/chat/:contactId" element={<IndividualChatPage />} />
+      <Route path="/admin" element={<AdminDashboardPage />} />
+      <Route path="/admin/users" element={<UsersManagementPage />} />
+      <Route path="/admin/courses" element={<CoursesManagementPage />} />
+      <Route path="/admin/registered-courses" element={<RegisteredCoursesManagementPage />} />
+      <Route path="/admin/employee-courses" element={<EmployeeCoursesManagementPage />} />
+      <Route path="/admin/customer-courses" element={<CustomerCoursesManagementPage />} />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   )
