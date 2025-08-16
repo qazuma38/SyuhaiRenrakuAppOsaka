@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { LogOut, User, Settings as SettingsIcon, MapPin, ChevronDown, Check, Bell, BellOff, Smartphone, Download } from 'lucide-react'
+import { LogOut, User, Settings as SettingsIcon, MapPin, ChevronDown, Check, Bell, BellOff, Smartphone, Download, Shield } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAppSelector } from '../hooks/useAppSelector'
 import { useAppDispatch } from '../hooks/useAppDispatch'
@@ -11,9 +11,11 @@ import { validateFirebaseConfig } from '../lib/firebaseConfig'
 import { usePWAInstall } from '../hooks/usePWAInstall'
 import { RegisteredCourse } from '../types/auth'
 import { CourseService } from '../lib/courseService'
+import { useNavigate } from 'react-router-dom'
 
 // 利用可能なコース一覧
 const SettingsPage: React.FC = () => {
+  const navigate = useNavigate()
   const dispatch = useAppDispatch()
   const { user } = useAppSelector((state) => state.auth)
   const { registeredCourses, assignedCourses, loading, error } = useAppSelector((state) => state.course)
@@ -592,6 +594,25 @@ Android Chromeでアプリをインストールするには：
         )}
 
         <div style={styles.section}>
+          {/* 管理者メニュー */}
+          {user?.is_admin && (
+            <div style={styles.adminSection}>
+              <div style={styles.adminHeader}>
+                <Shield size={24} color="#ef4444" />
+                <h3 style={styles.adminTitle}>管理者メニュー</h3>
+              </div>
+              <button
+                style={styles.adminButton}
+                onClick={() => navigate('/admin')}
+              >
+                <span style={styles.adminButtonText}>データベース管理</span>
+              </button>
+              <p style={styles.adminDescription}>
+                システム管理者として各テーブルのデータを管理できます
+              </p>
+            </div>
+          )}
+          
           <div style={styles.sectionHeader}>
             <SettingsIcon size={24} color="#4285f4" />
             <h3 style={styles.sectionTitle}>アプリ設定</h3>
@@ -1508,6 +1529,47 @@ const styles = {
   emptyContainer: {
     padding: '32px',
     textAlign: 'center' as const,
+  },
+  adminSection: {
+    backgroundColor: '#fef2f2',
+    borderRadius: '8px',
+    padding: '20px',
+    marginBottom: '24px',
+    border: '2px solid #fecaca',
+  },
+  adminHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    marginBottom: '16px',
+  },
+  adminTitle: {
+    fontSize: '18px',
+    fontWeight: 'bold',
+    color: '#dc2626',
+    margin: '0',
+  },
+  adminButton: {
+    backgroundColor: '#dc2626',
+    color: '#ffffff',
+    border: 'none',
+    borderRadius: '8px',
+    padding: '12px 20px',
+    fontSize: '16px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    width: '100%',
+    marginBottom: '12px',
+  },
+  adminButtonText: {
+    fontSize: '16px',
+    fontWeight: '600',
+  },
+  adminDescription: {
+    fontSize: '14px',
+    color: '#7f1d1d',
+    margin: '0',
+    fontStyle: 'italic',
   },
 }
 

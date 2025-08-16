@@ -7,6 +7,7 @@ export interface User {
   fcm_token?: string;
   base?: string;
   created_at: string;
+  is_admin?: boolean;
 }
 
 export interface AuthState {
