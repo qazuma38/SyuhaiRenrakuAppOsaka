@@ -45,6 +45,9 @@ const CleanupLogsPage: React.FC = () => {
 
   const loadCleanupLogs = async () => {
     try {
+      console.log('Loading cleanup logs...')
+      console.log('Current user:', currentUser)
+      
       const { data, error } = await supabase
         .from('cleanup_logs')
         .select('*')
@@ -52,10 +55,18 @@ const CleanupLogsPage: React.FC = () => {
 
       if (error) {
         console.error('Error loading cleanup logs:', error)
+        console.error('Error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        })
         alert('クリーンアップログの読み込みに失敗しました')
         return
       }
 
+      console.log('Cleanup logs loaded:', data)
+      console.log('Number of records:', data?.length || 0)
       setCleanupLogs(data || [])
     } catch (error) {
       console.error('Error in loadCleanupLogs:', error)
@@ -66,6 +77,7 @@ const CleanupLogsPage: React.FC = () => {
   }
 
   useEffect(() => {
+    console.log('CleanupLogsPage mounted, loading data...')
     loadCleanupLogs()
   }, [])
 
@@ -112,7 +124,7 @@ const CleanupLogsPage: React.FC = () => {
     try {
       console.log('Downloading cleanup logs...')
       
-      // cleanup_logsテーブルの全データを取得
+      // cleanup_logsテーブルの全データを取得（管理者権限で）
       const { data, error } = await supabase
         .from('cleanup_logs')
         .select('*')
@@ -120,10 +132,19 @@ const CleanupLogsPage: React.FC = () => {
 
       if (error) {
         console.error('Error fetching cleanup logs:', error)
+        console.error('Error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        })
         alert(`クリーンアップログの取得に失敗しました: ${error.message}`)
         return
       }
 
+      console.log('Downloaded cleanup logs data:', data)
+      console.log('Number of records for download:', data?.length || 0)
+      
       if (!data || data.length === 0) {
         alert('ダウンロードするデータがありません')
         return
