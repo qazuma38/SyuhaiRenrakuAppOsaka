@@ -3,7 +3,7 @@
 
   1. Purpose
     - Deletes records older than 15 days from message_logs, user_sessions, chat_messages
-    - Archives deleted data as CSV files in /tmp directory
+    - Archives deleted data as CSV files in database
     - Runs weekly on Sundays at 2 AM
 
   2. Functionality

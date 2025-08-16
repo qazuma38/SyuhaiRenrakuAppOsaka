@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, Download, Database, FileText, Calendar } from 'lucide-react'
+import { ChevronLeft, Download, Database, FileText, Calendar, Play, RefreshCw } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAppSelector } from '../../hooks/useAppSelector'
 import { CleanupLog } from '../../types/auth'
@@ -10,6 +10,7 @@ const CleanupLogsPage: React.FC = () => {
   const { user: currentUser } = useAppSelector((state) => state.auth)
   const [logs, setLogs] = useState<CleanupLog[]>([])
   const [loading, setLoading] = useState(true)
+  const [executing, setExecuting] = useState(false)
   const [selectedLog, setSelectedLog] = useState<CleanupLog | null>(null)
   const [showCsvModal, setShowCsvModal] = useState(false)
 
@@ -49,6 +50,37 @@ const CleanupLogsPage: React.FC = () => {
       alert('ログの読み込み中にエラーが発生しました')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleManualCleanup = async () => {
+    if (!window.confirm('データクリーンアップを手動実行しますか？\n15日以上古いレコードが削除されます。')) {
+      return
+    }
+
+    setExecuting(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('cleanup-old-data', {
+        body: {}
+      })
+
+      if (error) {
+        console.error('Error executing cleanup:', error)
+        alert('クリーンアップの実行に失敗しました')
+        return
+      }
+
+      if (data?.success) {
+        alert(`クリーンアップが完了しました\n${data.message}`)
+        await loadLogs() // ログを再読み込み
+      } else {
+        alert('クリーンアップでエラーが発生しました')
+      }
+    } catch (error) {
+      console.error('Error in handleManualCleanup:', error)
+      alert('クリーンアップの実行中にエラーが発生しました')
+    } finally {
+      setExecuting(false)
     }
   }
 
@@ -119,6 +151,32 @@ const CleanupLogsPage: React.FC = () => {
           <p style={styles.summaryText}>
             15日以上古いレコードの削除履歴とアーカイブデータを管理します
           </p>
+          
+          <div style={styles.manualExecutionSection}>
+            <button
+              style={{
+                ...styles.manualExecuteButton,
+                ...(executing ? styles.manualExecuteButtonDisabled : {}),
+              }}
+              onClick={handleManualCleanup}
+              disabled={executing}
+            >
+              {executing ? (
+                <>
+                  <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                  <span>実行中...</span>
+                </>
+              ) : (
+                <>
+                  <Play size={16} />
+                  <span>手動実行</span>
+                </>
+              )}
+            </button>
+            <p style={styles.manualExecuteDescription}>
+              スケジュールを待たずに即座にクリーンアップを実行します
+            </p>
+          </div>
         </div>
 
         <div style={styles.tableContainer}>
@@ -272,6 +330,37 @@ const styles = {
   summaryText: {
     fontSize: '16px',
     color: '#6b7280',
+    margin: '0',
+    marginBottom: '24px',
+  },
+  manualExecutionSection: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    gap: '8px',
+  },
+  manualExecuteButton: {
+    backgroundColor: '#ef4444',
+    color: '#ffffff',
+    border: 'none',
+    borderRadius: '8px',
+    padding: '12px 24px',
+    fontSize: '16px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    transition: 'all 0.2s',
+  },
+  manualExecuteButtonDisabled: {
+    backgroundColor: '#9ca3af',
+    cursor: 'not-allowed',
+  },
+  manualExecuteDescription: {
+    fontSize: '12px',
+    color: '#6b7280',
+    textAlign: 'center' as const,
     margin: '0',
   },
   tableContainer: {
