@@ -33,7 +33,7 @@ export const loginUser = createAsyncThunk(
       // Check if user exists and password matches
       const { data: user, error } = await supabase
         .from('users')
-        .select('id, name, phone, password, user_type, fcm_token, base, created_at')
+        .select('id, name, phone, password, user_type, fcm_token, base, created_at, is_admin')
         .eq('id', userId)
         .eq('password', password)
         .maybeSingle();
@@ -71,7 +71,8 @@ export const loginUser = createAsyncThunk(
         user_type: user.user_type,
         fcm_token: user.fcm_token || '',
         base: user.base || '',
-        created_at: user.created_at
+        created_at: user.created_at,
+        is_admin: user.is_admin || false
       };
 
       console.log('Redux: Login successful, user data:', userData);
