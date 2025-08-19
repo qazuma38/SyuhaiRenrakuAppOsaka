@@ -42,7 +42,7 @@ const LoginPage: React.FC = () => {
           <span style={styles.logoText}>medic.web</span>
         </div>
         <h1 style={styles.title}>集配連絡システム</h1>
-        <p style={styles.version}>ver0.1.2</p>
+        <p style={styles.version}>ver0.1.3</p>
       </div>
 
       <form style={styles.formContainer} onSubmit={handleSubmit}>
